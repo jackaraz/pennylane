@@ -17,6 +17,7 @@ to be temporarily modified.
 """
 # pylint: disable=protected-access
 import contextlib
+import time
 
 
 @contextlib.contextmanager
@@ -40,6 +41,7 @@ def set_shots(device, shots):
     >>> set_shots(dev, shots=100)(lambda: dev.shots)()
     100
     """
+    t1 = time.time()
     if shots == device.shots:
         yield
         return
@@ -54,3 +56,5 @@ def set_shots(device, shots):
     finally:
         device.shots = original_shots
         device._shot_vector = original_shot_vector
+    t2 = time.time()
+    print(f"set_shots time: {t2 - t1}")

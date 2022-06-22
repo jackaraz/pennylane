@@ -19,11 +19,13 @@ Also contains the general execute function, for exectuting tapes on
 devices with autodifferentiation support.
 """
 # pylint: disable=import-outside-toplevel,too-many-arguments,too-many-branches,not-callable
+import time
 from functools import wraps
 import warnings
 import inspect
 from contextlib import _GeneratorContextManager
 from cachetools import LRUCache
+import time
 
 import pennylane as qml
 
@@ -112,7 +114,7 @@ def cache_execute(fn, cache, pass_kwargs=False, return_tuple=True, expand_fn=Non
         cached_results = {}
         hashes = {}
         repeated = {}
-
+        t1 = time.time()
         for i, tape in enumerate(tapes):
             h = tape.hash
 
@@ -169,7 +171,10 @@ def cache_execute(fn, cache, pass_kwargs=False, return_tuple=True, expand_fn=Non
 
         else:
             # execute all unique tapes that do not exist in the cache
+            t_s = time.time()
             res = fn(execution_tapes.values(), **kwargs)
+            t_e = time.time()
+            print(f"inner func exec {t_e-t_s}")
 
         final_res = []
 
@@ -187,7 +192,8 @@ def cache_execute(fn, cache, pass_kwargs=False, return_tuple=True, expand_fn=Non
                 r = res.pop(0)
                 final_res.append(r)
                 cache[hashes[i]] = r
-
+        t2 = time.time()
+        print(f"wrapper logic: {t2 - t1}")
         return (final_res, []) if return_tuple else final_res
 
     wrapper.fn = fn
@@ -415,7 +421,11 @@ def execute(
         tapes, device, execute_fn, gradient_fn, gradient_kwargs, _n=1, max_diff=max_diff, mode=_mode
     )
 
-    return batch_fn(res)
+    t_s = time.time()
+    final_res = batch_fn(res)
+    t_e = time.time()
+    print(f"final batch_fn: {t_e - t_s}")
+    return final_res
 
 
 def _get_jax_execute_fn(interface, tapes):

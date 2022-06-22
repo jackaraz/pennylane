@@ -16,6 +16,8 @@ This module contains functions for adding the Autograd interface
 to a PennyLane Device class.
 """
 # pylint: disable=too-many-arguments
+import time
+
 import autograd
 from autograd.numpy.numpy_boxes import ArrayBox
 
@@ -107,8 +109,11 @@ def _execute(
     understand the consequences!
     """
     with qml.tape.Unwrap(*tapes):
+        ts = time.time()
         res, jacs = execute_fn(tapes, **gradient_kwargs)
-
+        te = time.time()
+        print(f"execute_func_time {te-ts}")
+    ts = time.time()
     for i, r in enumerate(res):
 
         if isinstance(res[i], np.ndarray):
@@ -122,7 +127,8 @@ def _execute(
 
         else:
             res[i] = qml.math.toarray(res[i])
-
+    te = time.time()
+    print(f"msc execute time {te - ts}")
     return res, jacs
 
 

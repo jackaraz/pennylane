@@ -42,7 +42,7 @@ from pennylane.math import multiply as qmlmul
 from pennylane.wires import Wires
 
 from pennylane.measurements import MeasurementProcess
-
+import time
 
 class QubitDevice(Device):
     """Abstract base class for PennyLane qubit devices.
@@ -251,10 +251,16 @@ class QubitDevice(Device):
         Returns:
             array[float]: measured value(s)
         """
+        t1 = time.time()
         self.check_validity(circuit.operations, circuit.observables)
+        t2 = time.time()
+        print(f"check_valid: {t2 - t1}")
 
         # apply all circuit operations
+        t1 = time.time()
         self.apply(circuit.operations, rotations=circuit.diagonalizing_gates, **kwargs)
+        t2 = time.time()
+        print(f"circ exec: {t2 - t1}")
 
         # generate computational basis samples
         if self.shots is not None or circuit.is_sampled:
@@ -264,7 +270,6 @@ class QubitDevice(Device):
 
         # compute the required statistics
         if not self.analytic and self._shot_vector is not None:
-
             results = []
             s1 = 0
 
@@ -291,10 +296,13 @@ class QubitDevice(Device):
                 results = qml.math.stack(results)
 
         else:
+            t1 = time.time()
             results = self.statistics(circuit.observables)
+            t2 = time.time()
+            print(f"stats exec: {t2 - t1}")
 
+        t1 = time.time()
         if not circuit.is_sampled:
-
             ret_types = [m.return_type for m in circuit.measurements]
 
             if len(circuit.measurements) == 1:
@@ -326,6 +334,8 @@ class QubitDevice(Device):
         if self.tracker.active:
             self.tracker.update(executions=1, shots=self._shots)
             self.tracker.record()
+        t2 = time.time()
+        print(f"Msc time: {t2-t1}")
         return results
 
     def batch_execute(self, circuits):
@@ -345,7 +355,7 @@ class QubitDevice(Device):
         """
         # TODO: This method and the tests can be globally implemented by Device
         # once it has the same signature in the execute() method
-
+        t1 = time.time()
         results = []
         for circuit in circuits:
             # we need to reset the device here, else it will
@@ -358,7 +368,8 @@ class QubitDevice(Device):
         if self.tracker.active:
             self.tracker.update(batches=1, batch_len=len(circuits))
             self.tracker.record()
-
+        t2 = time.time()
+        print(f"batch_exec time: {t2-t1}")
         return results
 
     @abc.abstractmethod
