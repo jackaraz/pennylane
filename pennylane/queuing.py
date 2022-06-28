@@ -16,6 +16,7 @@ from collections import OrderedDict
 from threading import RLock
 from contextlib import contextmanager
 
+
 class QueueManager:
 
     _recording_queues = []
@@ -63,6 +64,7 @@ class QueueManager:
     def get_info(cls, obj):
         if cls.recording():
             return cls.active_queue().get_info(obj)
+
 
 class Queue:
 
@@ -123,8 +125,9 @@ class Queue:
     def __len__(self):
         return len(self.queue)
 
-def process_queue(queue:Queue):
-    list_dict = { "_ops": [], '_measurements': []}
+
+def process_queue(queue: Queue):
+    list_dict = {"_ops": [], "_measurements": []}
     list_order = {"_ops": 0, "_measurements": 1}
     current_list = "_ops"
 
@@ -142,6 +145,7 @@ def process_queue(queue:Queue):
             list_dict[obj._queue_category].append(obj)
 
     return tuple(list_dict["_ops"]), tuple(list_dict["_measurements"])
+
 
 def apply(op, context=QueueManager):
     op.__copy__().queue()

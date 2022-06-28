@@ -18,11 +18,14 @@ This module contains the base quantum tape.
 import pennylane as qml
 from pennylane.circuit import expand_circuit as expand_tape
 
+
 class TapeError(ValueError):
     """An error raised with a quantum tape."""
 
+
 def get_active_tape():
     return qml.queuing.QueueManager.active_queue()
+
 
 class QuantumTape(qml.queuing.Queue, qml.Circuit):
     def __init__(self, do_queue=False):

@@ -61,7 +61,6 @@ https://github.com/Qiskit/openqasm/blob/master/examples/stdgates.inc
 """
 
 
-
 def expand_circuit(tape, depth=1, stop_at=None, expand_measurements=False):
     """Expand all objects in a tape to a specific depth.
 
@@ -171,7 +170,6 @@ def expand_circuit(tape, depth=1, stop_at=None, expand_measurements=False):
 
 
 def make_circuit(fn):
-
     def wrapper(*args, **kwargs):
         if isinstance(fn, qml.Circuit):
             return fn
@@ -238,6 +236,7 @@ class Circuit:
         if self._observables is None:
             self._observables = tuple(m.obs if m.obs is not None else m for m in self._measurements)
         return self._observables
+
     @property
     def num_params(self):
         return len(self.trainable_params)
@@ -309,9 +308,7 @@ class Circuit:
 
     def _update_circuit_info(self):
         """Update circuit metadata"""
-        self.wires = Wires.all_wires(
-            [op.wires for op in self.operations + self.measurements]
-        )
+        self.wires = Wires.all_wires([op.wires for op in self.operations + self.measurements])
         self.num_wires = len(self.wires)
 
         self.is_sampled = any(m.return_type is Sample for m in self.measurements)
@@ -489,7 +486,6 @@ class Circuit:
 
     def __copy__(self):
         return self.copy(copy_operations=True)
-
 
     # PARAMETERS ######################################
 
@@ -1070,7 +1066,9 @@ class Circuit:
 
         # decompose the queue
         # pylint: disable=no-member
-        operations = temp_circ.expand(depth=2, stop_at=lambda obj: obj.name in OPENQASM_GATES).operations
+        operations = temp_circ.expand(
+            depth=2, stop_at=lambda obj: obj.name in OPENQASM_GATES
+        ).operations
 
         # create the QASM code representing the operations
         for op in operations:
