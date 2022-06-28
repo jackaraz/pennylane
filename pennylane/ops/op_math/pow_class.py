@@ -26,7 +26,7 @@ from pennylane.operation import (
     Observable,
     expand_matrix,
 )
-from pennylane.queuing import QueuingContext, apply
+from pennylane.queuing import QueueManager
 from pennylane.wires import Wires
 
 from pennylane import math as qmlmath
@@ -228,8 +228,8 @@ class Pow(Operator):
     def num_wires(self):
         return len(self.wires)
 
-    def queue(self, context=QueuingContext):
-        context.safe_update_info(self.base, owner=self)
+    def queue(self, context=QueueManager):
+        context.update_info(self.base, owner=self)
         context.append(self, owns=self.base)
 
         return self
@@ -273,8 +273,8 @@ class Pow(Operator):
             return self.base.pow(self.z)
         except PowUndefinedError as e:
             if isinstance(self.z, int) and self.z > 0:
-                if QueuingContext.recording():
-                    return [apply(self.base) for _ in range(self.z)]
+                if QueueManager.recording():
+                    return [self.base.__copy__().queue() for _ in range(self.z)]
                 return [self.base.__copy__() for _ in range(self.z)]
             # TODO: consider: what if z is an int and less than 0?
             # do we want Pow(base, -1) to be a "more fundamental" op

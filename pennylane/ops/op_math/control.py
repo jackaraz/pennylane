@@ -284,8 +284,7 @@ def ctrl(fn, control, control_values=None):
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        with QuantumTape(do_queue=False) as tape:
-            fn(*args, **kwargs)
-        return ControlledOperation(tape, control, control_values=control_values)
+        circuit = qml.make_circuit.make_circuit(fn)(*args, **kwargs)
+        return ControlledOperation(circuit, control, control_values=control_values)
 
     return wrapper

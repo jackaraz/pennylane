@@ -23,7 +23,8 @@ import numpy as _np
 from semantic_version import SimpleSpec, Version
 
 from pennylane.boolean_fn import BooleanFn
-from pennylane.queuing import apply, QueuingContext
+import pennylane.queuing
+from pennylane.circuit import Circuit
 
 import pennylane.fourier
 import pennylane.kernels
@@ -65,6 +66,7 @@ from pennylane.templates.state_preparations import *
 from pennylane.templates.subroutines import *
 from pennylane import qaoa
 from pennylane.qnode import QNode, qnode
+from pennylane.queuing import apply
 from pennylane.transforms import (
     adjoint_metric_tensor,
     batch_params,
@@ -95,7 +97,7 @@ from pennylane.optimize import *
 from pennylane.vqe import ExpvalCost, VQECost
 from pennylane.debugging import snapshots
 
-# QueuingContext and collections needs to be imported after all other pennylane imports
+# collections needs to be imported after all other pennylane imports
 from .collections import QNodeCollection, dot, map, sum
 import pennylane.grouping  # pylint:disable=wrong-import-order
 import pennylane.gradients  # pylint:disable=wrong-import-order

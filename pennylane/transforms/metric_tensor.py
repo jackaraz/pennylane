@@ -236,6 +236,7 @@ def metric_tensor(tape, approx=None, allow_nonunitary=True, aux_wire=None, devic
         This means that in total only the tapes for the first terms of the off block-diagonal
         are required in addition to the circuits for the block diagonal.
     """
+    print("tape provided to metric tensor:", tape.__class__)
     if not tape.trainable_params:
         warnings.warn(
             "Attempted to compute the metric tensor of a tape with no trainable parameters. "
@@ -388,7 +389,7 @@ def _metric_tensor_cov_matrix(tape, diag_approx):
     """
     # get the circuit graph
     graph = tape.graph
-
+    print(tape.__class__)
     metric_tensor_tapes = []
     obs_list = []
     coeffs_list = []

@@ -648,9 +648,9 @@ class Hamiltonian(Observable):
             return self
         raise ValueError(f"Cannot subtract {type(H)} from Hamiltonian")
 
-    def queue(self, context=qml.QueuingContext):
+    def queue(self, context=qml.queuing.QueueManager):
         """Queues a qml.Hamiltonian instance"""
         for o in self.ops:
-            context.safe_update_info(o, owner=self)
+            context.update_info(o, owner=self)
         context.append(self, owns=tuple(self.ops))
         return self

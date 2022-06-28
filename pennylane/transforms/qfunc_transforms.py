@@ -78,7 +78,7 @@ def make_tape(fn):
     return wrapper
 
 
-class NonQueuingTape(qml.queuing.AnnotatedQueue):
+class NonQueuingTape(qml.tape.QuantumTape):
     """Mixin class that creates a tape that does not queue
     itself to the current queuing context."""
 
@@ -87,9 +87,9 @@ class NonQueuingTape(qml.queuing.AnnotatedQueue):
         super()._process_queue()  # pylint:disable=no-member
 
         for obj, info in self._queue.items():
-            qml.queuing.QueuingContext.append(obj, **info)
+            qml.queuing.QueueManager.append(obj, **info)
 
-        qml.queuing.QueuingContext.remove(self)
+        qml.queuing.QueueManager.remove(self)
 
 
 class single_tape_transform:

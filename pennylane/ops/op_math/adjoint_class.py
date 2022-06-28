@@ -15,7 +15,7 @@
 This submodule defines the symbolic operation that indicates the adjoint of an operator.
 """
 from pennylane.operation import Operator, Operation, AdjointUndefinedError, Observable
-from pennylane.queuing import QueuingContext
+from pennylane.queuing import QueueManager
 from pennylane.math import transpose, conj
 
 
@@ -269,8 +269,8 @@ class Adjoint(Operator):
     def is_hermitian(self):
         return self.base.is_hermitian
 
-    def queue(self, context=QueuingContext):
-        context.safe_update_info(self.base, owner=self)
+    def queue(self, context=QueueManager):
+        context.update_info(self.base, owner=self)
         context.append(self, owns=self.base)
 
         return self

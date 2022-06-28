@@ -180,7 +180,7 @@ class QNode:
                 "Invalid device. Device must be a valid PennyLane device."
             )
 
-        if "shots" in inspect.signature(func).parameters:
+        if (not isinstance(func, qml.Circuit)) and "shots" in inspect.signature(func).parameters:
             warnings.warn(
                 "Detected 'shots' as an argument to the given quantum function. "
                 "The 'shots' argument name is reserved for overriding the number of shots "
@@ -520,11 +520,8 @@ class QNode:
     def construct(self, args, kwargs):
         """Call the quantum function with a tape context, ensuring the operations get queued."""
 
-        self._tape = qml.tape.QuantumTape()
-
-        with self.tape:
-            self._qfunc_output = self.func(*args, **kwargs)
-        self._tape._qfunc_output = self._qfunc_output
+        self._tape = qml.circuit.make_circuit(self.func)(*args, **kwargs)
+        self._qfunc_output = self._tape._qfunc_output
 
         params = self.tape.get_parameters(trainable_only=False)
         self.tape.trainable_params = qml.math.get_trainable_indices(params)

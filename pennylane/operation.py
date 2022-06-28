@@ -106,6 +106,7 @@ import numpy as np
 from numpy.linalg import multi_dot
 
 import pennylane as qml
+from pennylane.queuing import QueueManager
 from pennylane.wires import Wires
 
 from .utils import pauli_eigs
@@ -1138,7 +1139,7 @@ class Operator(abc.ABC):
             return [self.__copy__()]
         raise PowUndefinedError
 
-    def queue(self, context=qml.QueuingContext):
+    def queue(self, context=QueueManager):
         """Append the operator to the Operator queue."""
         context.append(self)
         return self  # so pre-constructed Observable instances can be queued and returned in a single statement
@@ -1174,25 +1175,22 @@ class Operator(abc.ABC):
         raise AdjointUndefinedError
 
     def expand(self):
-        """Returns a tape that has recorded the decomposition of the operator.
+        """Returns a circuit that has recorded the decomposition of the operator.
 
         Returns:
-            .QuantumTape: quantum tape
+            .Circuit: quantum tape
         """
-        tape = qml.tape.QuantumTape(do_queue=False)
-
-        with tape:
-            self.decomposition()
+        circuit = qml.Circuit(tuple(self.decomposition()), tuple())
 
         if not self.data:
             # original operation has no trainable parameters
-            tape.trainable_params = {}
+            circuit.trainable_params = {}
 
         # the inverse attribute can be defined by subclasses
         if getattr(self, "inverse", False):
-            tape.inv()
+            circuit.inv()
 
-        return tape
+        return circuit
 
 
 # =============================================================================
@@ -1744,7 +1742,7 @@ class Tensor(Observable):
 
         return "@".join(ob.label(decimals=decimals) for ob in self.obs)
 
-    def queue(self, context=qml.QueuingContext, init=False):  # pylint: disable=arguments-differ
+    def queue(self, context=QueueManager, init=False):  # pylint: disable=arguments-differ
         constituents = self.obs
 
         if init:
@@ -1760,7 +1758,7 @@ class Tensor(Observable):
                 else:
                     raise ValueError("Can only perform tensor products between observables.")
 
-            context.safe_update_info(o, owner=self)
+            context.update_info(o, owner=self)
 
         context.append(self, owns=tuple(constituents))
         return self
@@ -1861,21 +1859,21 @@ class Tensor(Observable):
             raise ValueError("Can only perform tensor products between observables.")
 
         if (
-            qml.QueuingContext.recording()
-            and self not in qml.QueuingContext.active_context()._queue
+            QueueManager.recording()
+            and self not in QueueManager.active_queue()._queue
         ):
-            qml.QueuingContext.append(self)
+            QueueManager.append(self)
 
-        qml.QueuingContext.safe_update_info(self, owns=tuple(self.obs))
-        qml.QueuingContext.safe_update_info(other, owner=self)
+        QueueManager.update_info(self, owns=tuple(self.obs))
+        QueueManager.update_info(other, owner=self)
 
         return self
 
     def __rmatmul__(self, other):
         if isinstance(other, Observable):
             self.obs[:0] = [other]
-            qml.QueuingContext.safe_update_info(self, owns=tuple(self.obs))
-            qml.QueuingContext.safe_update_info(other, owner=self)
+            QueueManager.update_info(self, owns=tuple(self.obs))
+            QueueManager.update_info(other, owner=self)
             return self
 
         raise ValueError("Can only perform tensor products between observables.")

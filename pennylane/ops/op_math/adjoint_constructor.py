@@ -17,8 +17,9 @@ This submodule applies the symbolic operation that indicates the adjoint of an o
 from functools import wraps
 
 from pennylane.operation import Operator, AdjointUndefinedError
-from pennylane.queuing import QueuingContext
+from pennylane.queuing import QueueManager
 from pennylane.tape import QuantumTape, stop_recording
+from pennylane.circuit import make_circuit
 
 from .adjoint_class import Adjoint
 
@@ -27,8 +28,8 @@ def _single_op_eager(op, update_queue=False):
     try:
         adj = op.adjoint()
         if update_queue:
-            QueuingContext.safe_update_info(op, owner=adj)
-            QueuingContext.append(adj, owns=op)
+            QueueManager.safe_update_info(op, owner=adj)
+            QueueManager.append(adj, owns=op)
         return adj
     except AdjointUndefinedError:
         return Adjoint(op)
@@ -123,13 +124,12 @@ def adjoint(fn, lazy=True):
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        with stop_recording(), QuantumTape() as tape:
-            fn(*args, **kwargs)
+        circuit = make_circuit(fn)(*args, **kwargs)
 
         if lazy:
-            adjoint_ops = [Adjoint(op) for op in reversed(tape.operations)]
+            adjoint_ops = [Adjoint(op) for op in reversed(circuit.operations)]
         else:
-            adjoint_ops = [_single_op_eager(op) for op in reversed(tape.operations)]
+            adjoint_ops = [_single_op_eager(op) for op in reversed(circuit.operations)]
 
         return adjoint_ops[0] if len(adjoint_ops) == 1 else adjoint_ops
 

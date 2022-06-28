@@ -27,6 +27,7 @@ from typing import Generic, TypeVar
 import numpy as np
 
 import pennylane as qml
+from pennylane.queuing import QueueManager
 from pennylane.wires import Wires
 
 # =============================================================================
@@ -473,10 +474,10 @@ class MeasurementProcess:
 
         return tape
 
-    def queue(self, context=qml.QueuingContext):
+    def queue(self, context=QueueManager):
         """Append the measurement process to an annotated queue."""
         if self.obs is not None:
-            context.safe_update_info(self.obs, owner=self)
+            context.update_info(self.obs, owner=self)
             context.append(self, owns=self.obs)
         else:
             context.append(self)
