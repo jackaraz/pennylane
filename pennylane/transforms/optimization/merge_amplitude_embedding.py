@@ -20,6 +20,7 @@ from pennylane.math import kron
 
 from ..transformed_qfunc import TransformedQfunc
 
+
 def _merge_amplitude_embedding(circuit):
     r"""Quantum function transform to combine amplitude embedding templates that act on different qubits.
 
@@ -96,7 +97,8 @@ def _merge_amplitude_embedding(circuit):
 
         new_amplitude = [AmplitudeEmbedding(final_vector, wires=final_wires)]
 
-    return Circuit(new_amplitude+not_amplitude_embedding, circuit.measurements)
+    return Circuit(new_amplitude + not_amplitude_embedding, circuit.measurements)
+
 
 def merge_amplitude_embedding(qfunc):
     return TransformedQfunc(qfunc, _merge_amplitude_embedding)

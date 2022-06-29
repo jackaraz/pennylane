@@ -19,6 +19,7 @@ from pennylane.wires import Wires
 
 from ..transformed_qfunc import TransformedQfunc
 
+
 def _undo_swaps(circuit):
     """Quantum function transform to remove SWAP gates by running from right
     to left through the circuit changing the position of the qubits accordingly.
@@ -79,9 +80,7 @@ def _undo_swaps(circuit):
             if len(params) == 0:
                 gates.append(type(current_gate)(wires=_change_wires(current_gate.wires)))
             else:
-                gates.append(
-                    type(current_gate)(*params, wires=_change_wires(current_gate.wires))
-                )
+                gates.append(type(current_gate)(*params, wires=_change_wires(current_gate.wires)))
 
         else:
             swap_wires_0, swap_wires_1 = current_gate.wires
@@ -94,6 +93,7 @@ def _undo_swaps(circuit):
     gates.reverse()
 
     return Circuit(gates, circuit.measurements)
+
 
 def undo_swaps(qfunc):
     return TransformedQfunc(qfunc, _undo_swaps)

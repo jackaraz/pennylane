@@ -20,6 +20,7 @@ from pennylane.math import allclose, stack, is_abstract
 from .optimization_utils import find_next_gate, fuse_rot_angles
 from ..transformed_qfunc import TransformedQfunc
 
+
 def _single_qubit_fusion(circuit, atol=1e-8, exclude_gates=None):
     r"""Quantum function transform to fuse together groups of single-qubit
     operations into a general single-qubit unitary operation (:class:`~.Rot`).
@@ -138,7 +139,7 @@ def _single_qubit_fusion(circuit, atol=1e-8, exclude_gates=None):
         # If we are tracing/jitting, don't perform any conditional checks and
         # apply the rotation regardless of the angles.
         if is_abstract(cumulative_angles):
-            new_ops.append( Rot(*cumulative_angles, wires=current_gate.wires))
+            new_ops.append(Rot(*cumulative_angles, wires=current_gate.wires))
         # If not tracing, check whether all angles are 0 (or equivalently, if the RY
         # angle is close to 0, and so is the sum of the RZ angles
         else:
@@ -148,15 +149,20 @@ def _single_qubit_fusion(circuit, atol=1e-8, exclude_gates=None):
                 atol=atol,
                 rtol=0,
             ):
-                new_ops.append( Rot(*cumulative_angles, wires=current_gate.wires) )
+                new_ops.append(Rot(*cumulative_angles, wires=current_gate.wires))
 
         # Remove the starting gate from the list
         list_copy.pop(0)
 
     return Circuit(new_ops, circuit.measurements)
 
+
 def single_qubit_fusion(atol=1e-8, exclude_gates=None):
     def wrapper(qfunc):
-        return TransformedQfunc(qfunc, _single_qubit_fusion,
-            transform_kwargs={'atol': atol, "exclude_gates": exclude_gates})
+        return TransformedQfunc(
+            qfunc,
+            _single_qubit_fusion,
+            transform_kwargs={"atol": atol, "exclude_gates": exclude_gates},
+        )
+
     return wrapper

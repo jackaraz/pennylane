@@ -22,6 +22,7 @@ from pennylane.ops.op_math import Adjoint
 from .optimization_utils import find_next_gate, fuse_rot_angles
 from ..transformed_qfunc import TransformedQfunc
 
+
 def _merge_rotations(circuit, atol=1e-8, include_gates=None):
     r"""Quantum function transform to combine rotation gates of the same type
     that act sequentially.
@@ -172,8 +173,11 @@ def _merge_rotations(circuit, atol=1e-8, include_gates=None):
 
     return Circuit(new_ops, circuit.measurements)
 
+
 def merge_rotations(atol=1e-8, include_gates=None):
     def wrapper(qfunc):
-        return TransformedQfunc(qfunc, _merge_rotations, tuple(), 
-            {"atol": atol, "include_gates": include_gates})
+        return TransformedQfunc(
+            qfunc, _merge_rotations, tuple(), {"atol": atol, "include_gates": include_gates}
+        )
+
     return wrapper

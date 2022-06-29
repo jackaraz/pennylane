@@ -224,7 +224,9 @@ def _commute_controlled(circuit, direction="right"):
 
     return Circuit(op_list, circuit.measurements)
 
+
 def commute_controlled(direction="right"):
     def wrapper(qfunc):
         return TransformedQfunc(qfunc, _commute_controlled, tuple(), {"direction": direction})
+
     return wrapper

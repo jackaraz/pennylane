@@ -61,5 +61,6 @@ def _remove_barrier(circuit):
 
     return Circuit(new_ops, circuit.measurements)
 
+
 def remove_barrier(qfunc):
     return TransformedQfunc(qfunc, _remove_barrier)

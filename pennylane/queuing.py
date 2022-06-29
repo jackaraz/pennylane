@@ -21,6 +21,8 @@ class QueueManager:
 
     _recording_queues = []
 
+    # Handle what is active ###################
+
     @classmethod
     def add_recording_queue(cls, queue):
         cls._recording_queues.append(queue)
@@ -44,6 +46,8 @@ class QueueManager:
         cls._recording_queues = []
         yield
         cls._recording_queues = active_contexts
+
+    # Manipulating the contents of the active queue #
 
     @classmethod
     def append(cls, obj, **kwargs):

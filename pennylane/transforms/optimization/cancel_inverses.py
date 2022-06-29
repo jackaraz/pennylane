@@ -26,6 +26,7 @@ from pennylane.ops.qubit.attributes import (
 from .optimization_utils import find_next_gate
 from ..transformed_qfunc import TransformedQfunc
 
+
 def _ops_equal(op1, op2):
     """Checks if two operators are equal up to class, data, hyperparameters, and wires"""
     return (
@@ -176,6 +177,7 @@ def _cancel_inverses(circuit):
         continue
 
     return Circuit(new_ops, circuit.measurements)
+
 
 def cancel_inverses(qfunc):
     return TransformedQfunc(qfunc, _cancel_inverses)
