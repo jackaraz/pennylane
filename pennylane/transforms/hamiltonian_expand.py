@@ -152,13 +152,7 @@ def hamiltonian_expand(tape, group=True):
         tapes = []
         for obs in obs_groupings:
 
-            with tape.__class__() as new_tape:
-                for op in tape.operations:
-                    op.queue()
-
-                for o in obs:
-                    qml.expval(o)
-
+            new_tape = qml.Circuit(tape.operations, tuple(qml.expval(o) for o in obs ))
             new_tape = new_tape.expand(stop_at=lambda obj: True)
             tapes.append(new_tape)
 
@@ -176,10 +170,7 @@ def hamiltonian_expand(tape, group=True):
     # make one tape per observable
     tapes = []
     for o in hamiltonian.ops:
-        with tape.__class__() as new_tape:
-            for op in tape.operations:
-                op.queue()
-            qml.expval(o)
+        new_tape = qml.Circuit(tape.operations, ( qml.expval(o),) )
 
         tapes.append(new_tape)
 
