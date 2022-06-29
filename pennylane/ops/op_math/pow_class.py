@@ -273,9 +273,7 @@ class Pow(Operator):
             return self.base.pow(self.z)
         except PowUndefinedError as e:
             if isinstance(self.z, int) and self.z > 0:
-                if QueueManager.recording():
-                    return [self.base.__copy__().queue() for _ in range(self.z)]
-                return [self.base.__copy__() for _ in range(self.z)]
+                return [self.base for _ in range(self.z)]
             # TODO: consider: what if z is an int and less than 0?
             # do we want Pow(base, -1) to be a "more fundamental" op
             raise DecompositionUndefinedError from e

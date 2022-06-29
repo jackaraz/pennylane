@@ -14,14 +14,12 @@
 
 """Transform that eliminates the swap operators by reordering the wires."""
 # pylint: disable=too-many-branches
-from pennylane import apply
-from pennylane.transforms import qfunc_transform
+from pennylane import Circuit
 from pennylane.wires import Wires
-from pennylane.tape import stop_recording
 
+from ..transformed_qfunc import TransformedQfunc
 
-@qfunc_transform
-def undo_swaps(tape):
+def _undo_swaps(circuit):
     """Quantum function transform to remove SWAP gates by running from right
     to left through the circuit changing the position of the qubits accordingly.
 
@@ -66,43 +64,36 @@ def undo_swaps(tape):
 
     """
     # Make a working copy of the list to traverse
-    list_copy = tape.operations.copy()
+    list_copy = list(circuit.operations)
     list_copy.reverse()
 
-    map_wires = {wire: wire for wire in tape.wires}
+    map_wires = {wire: wire for wire in circuit.wires}
     gates = []
 
-    def _change_wires(wires):
-        change_wires = Wires([])
-        wires = wires.toarray()
-        for wire in wires:
-            change_wires += map_wires[wire]
-        return change_wires
+    _change_wires = lambda wires: Wires([map_wires[w] for w in wires])
 
-    with stop_recording():
-        while len(list_copy) > 0:
-            current_gate = list_copy[0]
-            params = current_gate.parameters
-            if current_gate.name != "SWAP":
-                if len(params) == 0:
-                    gates.append(type(current_gate)(wires=_change_wires(current_gate.wires)))
-                else:
-                    gates.append(
-                        type(current_gate)(*params, wires=_change_wires(current_gate.wires))
-                    )
-
+    while len(list_copy) > 0:
+        current_gate = list_copy[0]
+        params = current_gate.parameters
+        if current_gate.name != "SWAP":
+            if len(params) == 0:
+                gates.append(type(current_gate)(wires=_change_wires(current_gate.wires)))
             else:
-                swap_wires_0, swap_wires_1 = current_gate.wires
-                map_wires[swap_wires_0], map_wires[swap_wires_1] = (
-                    map_wires[swap_wires_1],
-                    map_wires[swap_wires_0],
+                gates.append(
+                    type(current_gate)(*params, wires=_change_wires(current_gate.wires))
                 )
-            list_copy.pop(0)
 
-        gates.reverse()
+        else:
+            swap_wires_0, swap_wires_1 = current_gate.wires
+            map_wires[swap_wires_0], map_wires[swap_wires_1] = (
+                map_wires[swap_wires_1],
+                map_wires[swap_wires_0],
+            )
+        list_copy.pop(0)
 
-        for m in tape.measurements:
-            gates.append(m)
+    gates.reverse()
 
-    for gate in gates:
-        apply(gate)
+    return Circuit(gates, circuit.measurements)
+
+def undo_swaps(qfunc):
+    return TransformedQfunc(qfunc, _undo_swaps)

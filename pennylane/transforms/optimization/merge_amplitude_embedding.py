@@ -12,16 +12,15 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 """Transform for merging AmplitudeEmbedding gates in a quantum circuit."""
-from pennylane import apply
-from pennylane.transforms import qfunc_transform
+from pennylane import Circuit
 
 from pennylane import AmplitudeEmbedding
 from pennylane._device import DeviceError
 from pennylane.math import kron
 
+from ..transformed_qfunc import TransformedQfunc
 
-@qfunc_transform
-def merge_amplitude_embedding(tape):
+def _merge_amplitude_embedding(circuit):
     r"""Quantum function transform to combine amplitude embedding templates that act on different qubits.
 
     Args:
@@ -59,10 +58,11 @@ def merge_amplitude_embedding(tape):
 
     """
     # Make a working copy of the list to traverse
-    list_copy = tape.operations.copy()
+    list_copy = list(circuit.operations)
     not_amplitude_embedding = []
     visited_wires = set()
     input_wires, input_vectors = [], []
+
     while len(list_copy) > 0:
         current_gate = list_copy[0]
         wires_set = set(current_gate.wires)
@@ -84,6 +84,7 @@ def merge_amplitude_embedding(tape):
         list_copy.pop(0)
         visited_wires = visited_wires.union(wires_set)
 
+    new_amplitude = []
     if len(input_wires) > 0:
         final_wires = input_wires[0]
         final_vector = input_vectors[0]
@@ -93,11 +94,9 @@ def merge_amplitude_embedding(tape):
             final_vector = kron(final_vector, v)
             final_wires = final_wires + w
 
-        AmplitudeEmbedding(final_vector, wires=final_wires)
+        new_amplitude = [AmplitudeEmbedding(final_vector, wires=final_wires)]
 
-    for gate in not_amplitude_embedding:
-        apply(gate)
+    return Circuit(new_amplitude+not_amplitude_embedding, circuit.measurements)
 
-    # Queue the measurements normally
-    for m in tape.measurements:
-        apply(m)
+def merge_amplitude_embedding(qfunc):
+    return TransformedQfunc(qfunc, _merge_amplitude_embedding)

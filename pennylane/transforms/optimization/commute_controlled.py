@@ -13,11 +13,11 @@
 # limitations under the License.
 """Transforms for pushing commuting gates through targets/control qubits."""
 
-from pennylane import apply
+from pennylane import Circuit
 from pennylane.wires import Wires
-from pennylane.transforms import qfunc_transform
 
 from .optimization_utils import find_next_gate
+from ..transformed_qfunc import TransformedQfunc
 
 
 def _commute_controlled_right(op_list):
@@ -153,8 +153,7 @@ def _commute_controlled_left(op_list):
     return op_list
 
 
-@qfunc_transform
-def commute_controlled(tape, direction="right"):
+def _commute_controlled(circuit, direction="right"):
     """Quantum function transform to move commuting gates past
     control and target qubits of controlled operations.
 
@@ -217,10 +216,15 @@ def commute_controlled(tape, direction="right"):
         raise ValueError("Direction for commute_controlled must be 'left' or 'right'")
 
     if direction == "right":
-        op_list = _commute_controlled_right(tape.operations)
+        op_list = _commute_controlled_right(list(circuit.operations))
     else:
-        op_list = _commute_controlled_left(tape.operations)
+        op_list = _commute_controlled_left(list(circuit.operations))
 
     # Once the list is rearranged, queue all the operations
-    for op in op_list + tape.measurements:
-        apply(op)
+
+    return Circuit(op_list, circuit.measurements)
+
+def commute_controlled(direction="right"):
+    def wrapper(qfunc):
+        return TransformedQfunc(qfunc, _commute_controlled, tuple(), {"direction": direction})
+    return wrapper

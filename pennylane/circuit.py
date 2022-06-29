@@ -20,7 +20,7 @@ import pennylane as qml
 from pennylane.wires import Wires
 from pennylane.measurements import Sample, Probability, State, Expectation, Variance
 from pennylane.operation import DiagGatesUndefinedError
-from pennylane.queuing import QueueManager, Queue, process_queue
+from pennylane.queuing import QueueManager, AnnotatedQueue, process_queue
 
 OPENQASM_GATES = {
     "CNOT": "cx",
@@ -169,21 +169,21 @@ def expand_circuit(tape, depth=1, stop_at=None, expand_measurements=False):
     return Circuit(tuple(queues["_ops"]), tuple(queues["_measurements"]))
 
 
-def make_circuit(fn):
-    def wrapper(*args, **kwargs):
-        if isinstance(fn, qml.Circuit):
-            return fn
+def make_circuit(obj, *args, **kwargs):
+    if isinstance(obj, Circuit):
+        return obj
 
-        with QueueManager.stop_recording(), Queue() as queue:
-            output = fn(*args)
+    if isinstance(obj, qml.transforms.TransformedQfunc):
+        return obj(*args, **kwargs)
 
-        operations, measurements = process_queue(queue)
-        circuit = qml.Circuit(operations, measurements)
-        circuit._qfunc_output = output
+    # else is qfunc
+    with QueueManager.stop_recording(), AnnotatedQueue() as queue:
+        output = obj(*args, **kwargs)
+    operations, measurements = process_queue(queue)
+    circuit = qml.Circuit(operations, measurements)
+    circuit._qfunc_output = output
 
-        return circuit
-
-    return wrapper
+    return circuit
 
 
 class Circuit:

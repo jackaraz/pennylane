@@ -520,7 +520,7 @@ class QNode:
     def construct(self, args, kwargs):
         """Call the quantum function with a tape context, ensuring the operations get queued."""
 
-        self._tape = qml.circuit.make_circuit(self.func)(*args, **kwargs)
+        self._tape = qml.circuit.make_circuit(self.func, *args, **kwargs)
         self._qfunc_output = self._tape._qfunc_output
 
         params = self.tape.get_parameters(trainable_only=False)

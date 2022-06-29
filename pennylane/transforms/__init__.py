@@ -175,6 +175,7 @@ to help build custom QNode, quantum function, and tape transforms:
     ~transforms.expand_nonunitary_gen
 """
 # Import the decorators first to prevent circular imports when used in other transforms
+from .transformed_qfunc import TransformedQfunc
 from .batch_transform import batch_transform, map_batch_transform
 from .qfunc_transforms import make_tape, single_tape_transform, qfunc_transform
 from .op_transforms import op_transform
@@ -196,6 +197,7 @@ from .mitigate import mitigate_with_zne
 from .optimization import (
     cancel_inverses,
     commute_controlled,
+    merge_rotations_old,
     merge_rotations,
     single_qubit_fusion,
     merge_amplitude_embedding,

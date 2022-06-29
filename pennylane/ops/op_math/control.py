@@ -284,7 +284,7 @@ def ctrl(fn, control, control_values=None):
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        circuit = qml.make_circuit.make_circuit(fn)(*args, **kwargs)
+        circuit = qml.circuit.make_circuit(fn, *args, **kwargs)
         return ControlledOperation(circuit, control, control_values=control_values)
 
     return wrapper

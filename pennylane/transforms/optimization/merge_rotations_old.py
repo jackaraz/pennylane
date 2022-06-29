@@ -13,16 +13,17 @@
 # limitations under the License.
 """Transform for merging adjacent rotations of the same type in a quantum circuit."""
 # pylint: disable=too-many-branches
-
-from pennylane.circuit import Circuit
+from pennylane import apply
+from pennylane.transforms import qfunc_transform
 from pennylane.math import allclose, stack, cast_like, zeros, is_abstract
 
 from pennylane.ops.qubit.attributes import composable_rotations
 from pennylane.ops.op_math import Adjoint
 from .optimization_utils import find_next_gate, fuse_rot_angles
-from ..transformed_qfunc import TransformedQfunc
 
-def _merge_rotations(circuit, atol=1e-8, include_gates=None):
+
+@qfunc_transform
+def merge_rotations(tape, atol=1e-8, include_gates=None):
     r"""Quantum function transform to combine rotation gates of the same type
     that act sequentially.
 
@@ -88,12 +89,9 @@ def _merge_rotations(circuit, atol=1e-8, include_gates=None):
     2: ─╰X─────────H────────╰●───────────────────┤
 
     """
-
     # Expand away adjoint ops
-    expanded_tape = circuit.expand(stop_at=lambda obj: not isinstance(obj, Adjoint))
+    expanded_tape = tape.expand(stop_at=lambda obj: not isinstance(obj, Adjoint))
     list_copy = list(expanded_tape.operations)
-
-    new_ops = []
 
     while len(list_copy) > 0:
         current_gate = list_copy[0]
@@ -102,13 +100,13 @@ def _merge_rotations(circuit, atol=1e-8, include_gates=None):
         # op is in it, then try to merge. If not, queue and move on.
         if include_gates is not None:
             if current_gate.name not in include_gates:
-                new_ops.append(current_gate)
+                apply(current_gate)
                 list_copy.pop(0)
                 continue
 
         # Check if the rotation is composable; if it is not, move on.
         if not current_gate in composable_rotations:
-            new_ops.append(current_gate)
+            apply(current_gate)
             list_copy.pop(0)
             continue
 
@@ -118,7 +116,7 @@ def _merge_rotations(circuit, atol=1e-8, include_gates=None):
         # If no such gate is found (either there simply is none, or there are other gates
         # "in the way", queue the operation and move on
         if next_gate_idx is None:
-            new_ops.append(current_gate)
+            apply(current_gate)
             list_copy.pop(0)
             continue
 
@@ -162,18 +160,14 @@ def _merge_rotations(circuit, atol=1e-8, include_gates=None):
         # apply the operation regardless of the angles. Otherwise, only apply if
         # the rotation angle is non-trivial.
         if is_abstract(cumulative_angles):
-            new_ops.append(current_gate.__class__(*cumulative_angles, wires=current_gate.wires))
+            current_gate.__class__(*cumulative_angles, wires=current_gate.wires)
         else:
             if not allclose(cumulative_angles, zeros(len(cumulative_angles)), atol=atol, rtol=0):
-                new_ops.append(current_gate.__class__(*cumulative_angles, wires=current_gate.wires))
+                current_gate.__class__(*cumulative_angles, wires=current_gate.wires)
 
         # Remove the first gate gate from the working list
         list_copy.pop(0)
 
-    return Circuit(new_ops, circuit.measurements)
-
-def merge_rotations(atol=1e-8, include_gates=None):
-    def wrapper(qfunc):
-        return TransformedQfunc(qfunc, _merge_rotations, tuple(), 
-            {"atol": atol, "include_gates": include_gates})
-    return wrapper
+    # Queue the measurements normally
+    for m in tape.measurements:
+        apply(m)

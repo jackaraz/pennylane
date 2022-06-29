@@ -13,16 +13,14 @@
 # limitations under the License.
 """Transform for fusing sequences of single-qubit gates."""
 # pylint: disable=too-many-branches
-from pennylane import apply
-from pennylane.transforms import qfunc_transform
+from pennylane import Circuit
 from pennylane.ops.qubit import Rot
 from pennylane.math import allclose, stack, is_abstract
 
 from .optimization_utils import find_next_gate, fuse_rot_angles
+from ..transformed_qfunc import TransformedQfunc
 
-
-@qfunc_transform
-def single_qubit_fusion(tape, atol=1e-8, exclude_gates=None):
+def _single_qubit_fusion(circuit, atol=1e-8, exclude_gates=None):
     r"""Quantum function transform to fuse together groups of single-qubit
     operations into a general single-qubit unitary operation (:class:`~.Rot`).
 
@@ -73,8 +71,9 @@ def single_qubit_fusion(tape, atol=1e-8, exclude_gates=None):
 
     """
     # Make a working copy of the list to traverse
-    list_copy = tape.operations.copy()
+    list_copy = list(circuit.operations)
 
+    new_ops = []
     while len(list_copy) > 0:
         current_gate = list_copy[0]
 
@@ -82,7 +81,7 @@ def single_qubit_fusion(tape, atol=1e-8, exclude_gates=None):
         # of fusion potential
         if exclude_gates is not None:
             if current_gate.name in exclude_gates:
-                apply(current_gate)
+                new_ops.append(current_gate)
                 list_copy.pop(0)
                 continue
 
@@ -91,7 +90,7 @@ def single_qubit_fusion(tape, atol=1e-8, exclude_gates=None):
         try:
             cumulative_angles = stack(current_gate.single_qubit_rot_angles())
         except (NotImplementedError, AttributeError):
-            apply(current_gate)
+            new_ops.append(current_gate)
             list_copy.pop(0)
             continue
 
@@ -99,7 +98,7 @@ def single_qubit_fusion(tape, atol=1e-8, exclude_gates=None):
         next_gate_idx = find_next_gate(current_gate.wires, list_copy[1:])
 
         if next_gate_idx is None:
-            apply(current_gate)
+            new_ops.append(current_gate)
             list_copy.pop(0)
             continue
 
@@ -109,7 +108,7 @@ def single_qubit_fusion(tape, atol=1e-8, exclude_gates=None):
         if exclude_gates is not None:
             next_gate = list_copy[next_gate_idx + 1]
             if next_gate.name in exclude_gates:
-                apply(current_gate)
+                new_ops.append(current_gate)
                 list_copy.pop(0)
                 continue
 
@@ -139,7 +138,7 @@ def single_qubit_fusion(tape, atol=1e-8, exclude_gates=None):
         # If we are tracing/jitting, don't perform any conditional checks and
         # apply the rotation regardless of the angles.
         if is_abstract(cumulative_angles):
-            Rot(*cumulative_angles, wires=current_gate.wires)
+            new_ops.append( Rot(*cumulative_angles, wires=current_gate.wires))
         # If not tracing, check whether all angles are 0 (or equivalently, if the RY
         # angle is close to 0, and so is the sum of the RZ angles
         else:
@@ -149,11 +148,15 @@ def single_qubit_fusion(tape, atol=1e-8, exclude_gates=None):
                 atol=atol,
                 rtol=0,
             ):
-                Rot(*cumulative_angles, wires=current_gate.wires)
+                new_ops.append( Rot(*cumulative_angles, wires=current_gate.wires) )
 
         # Remove the starting gate from the list
         list_copy.pop(0)
 
-    # Queue the measurements normally
-    for m in tape.measurements:
-        apply(m)
+    return Circuit(new_ops, circuit.measurements)
+
+def single_qubit_fusion(atol=1e-8, exclude_gates=None):
+    def wrapper(qfunc):
+        return TransformedQfunc(qfunc, _single_qubit_fusion,
+            transform_kwargs={'atol': atol, "exclude_gates": exclude_gates})
+    return wrapper

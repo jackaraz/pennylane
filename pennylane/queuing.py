@@ -66,7 +66,7 @@ class QueueManager:
             return cls.active_queue().get_info(obj)
 
 
-class Queue:
+class AnnotatedQueue:
 
     _lock = RLock()
 
@@ -78,7 +78,8 @@ class Queue:
         self._queue[obj] = kwargs
 
     def remove(self, obj):
-        del self._queue[obj]
+        if obj in self._queue:
+            del self._queue[obj]
 
     def update_info(self, obj, **kwargs):
         if obj in self._queue:
@@ -92,14 +93,14 @@ class Queue:
         return list(self._queue)
 
     def __enter__(self):
-        Queue._lock.acquire()
+        AnnotatedQueue._lock.acquire()
         try:
             if self.do_queue and QueueManager.recording():
                 QueueManager.active_queue().append(self)
             QueueManager.add_recording_queue(self)
             return self
         except Exception as _:
-            Queue._lock.release()
+            AnnotatedQueue._lock.release()
             raise
 
     def __exit__(self, exception_type, exception_value, traceback):
@@ -126,7 +127,7 @@ class Queue:
         return len(self.queue)
 
 
-def process_queue(queue: Queue):
+def process_queue(queue: AnnotatedQueue):
     list_dict = {"_ops": [], "_measurements": []}
     list_order = {"_ops": 0, "_measurements": 1}
     current_list = "_ops"

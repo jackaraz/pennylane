@@ -13,12 +13,11 @@
 # limitations under the License.
 """Transform for removing the Barrier gate from quantum circuits."""
 # pylint: disable=too-many-branches
-from pennylane import apply
-from pennylane.transforms import qfunc_transform
+from pennylane import Circuit
+from ..transformed_qfunc import TransformedQfunc
 
 
-@qfunc_transform
-def remove_barrier(tape):
+def _remove_barrier(circuit):
     """Quantum function transform to remove Barrier gates.
 
     Args:
@@ -58,19 +57,9 @@ def remove_barrier(tape):
        1: ──H─────┤
 
     """
-    # Make a working copy of the list to traverse
-    list_copy = tape.operations.copy()
+    new_ops = tuple(op for op in circuit.operations if op.name != "Barrier")
 
-    while len(list_copy) > 0:
-        current_gate = list_copy[0]
+    return Circuit(new_ops, circuit.measurements)
 
-        # Remove Barrier gate
-        if current_gate.name != "Barrier":
-            apply(current_gate)
-
-        list_copy.pop(0)
-        continue
-
-    # Queue the measurements normally
-    for m in tape.measurements:
-        apply(m)
+def remove_barrier(qfunc):
+    return TransformedQfunc(qfunc, _remove_barrier)

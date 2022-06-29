@@ -124,7 +124,7 @@ def adjoint(fn, lazy=True):
 
     @wraps(fn)
     def wrapper(*args, **kwargs):
-        circuit = make_circuit(fn)(*args, **kwargs)
+        circuit = make_circuit(fn, *args, **kwargs)
 
         if lazy:
             adjoint_ops = [Adjoint(op) for op in reversed(circuit.operations)]

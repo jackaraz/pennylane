@@ -100,13 +100,13 @@ def commutation_dag(circuit):
             circuit.construct(args, kwargs)
             tape = circuit.qtape
 
-        elif isinstance(circuit, qml.tape.QuantumTape):
+        elif isinstance(circuit, (qml.tape.QuantumTape, qml.Circuit)):
             # user passed a tape
             tape = circuit
 
         elif callable(circuit):
             # user passed something that is callable but not a tape or qnode.
-            tape = qml.transforms.make_tape(circuit)(*args, **kwargs)
+            tape = qml.circuit.make_circuit(circuit,*args, **kwargs)
             # raise exception if it is not a quantum function
             if len(tape.operations) == 0:
                 raise ValueError("Function contains no quantum operation")

@@ -27,10 +27,10 @@ def get_active_tape():
     return qml.queuing.QueueManager.active_queue()
 
 
-class QuantumTape(qml.queuing.Queue, qml.Circuit):
+class QuantumTape(qml.queuing.AnnotatedQueue, qml.Circuit):
     def __init__(self, do_queue=False):
-        qml.queuing.Queue.__init__(self, do_queue=do_queue)
-        qml.Circuit.__init__(self, [], [], [])
+        qml.queuing.AnnotatedQueue.__init__(self, do_queue=do_queue)
+        qml.Circuit.__init__(self, tuple(), tuple())
 
     def __exit__(self, exception_type, exception_value, traceback):
         qml.queuing.QueueManager.remove_recording_queue()
@@ -38,7 +38,4 @@ class QuantumTape(qml.queuing.Queue, qml.Circuit):
         self._update()
 
     def _process_queue(self):
-        processed_lists = qml.queuing.process_queue(self._queue)
-        self._prep = processed_lists[0]
-        self._ops = processed_lists[1]
-        self._measurements = processed_lists[2]
+        self._ops, self._measurements = qml.queuing.process_queue(self._queue)

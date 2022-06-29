@@ -13,10 +13,10 @@
 # limitations under the License.
 """Transform for cancelling adjacent inverse gates in quantum circuits."""
 # pylint: disable=too-many-branches
-from pennylane import apply
+from pennylane import Circuit
+
 from pennylane.ops.op_math import Adjoint
 from pennylane.wires import Wires
-from pennylane.transforms import qfunc_transform
 
 from pennylane.ops.qubit.attributes import (
     self_inverses,
@@ -24,7 +24,7 @@ from pennylane.ops.qubit.attributes import (
     symmetric_over_control_wires,
 )
 from .optimization_utils import find_next_gate
-
+from ..transformed_qfunc import TransformedQfunc
 
 def _ops_equal(op1, op2):
     """Checks if two operators are equal up to class, data, hyperparameters, and wires"""
@@ -67,8 +67,7 @@ def _are_inverses(op1, op2):
     return False
 
 
-@qfunc_transform
-def cancel_inverses(tape):
+def _cancel_inverses(circuit):
     """Quantum function transform to remove any operations that are applied next to their
     (self-)inverses or adjoint.
 
@@ -120,7 +119,9 @@ def cancel_inverses(tape):
 
     """
     # Make a working copy of the list to traverse
-    list_copy = tape.operations.copy()
+    list_copy = list(circuit.operations)
+
+    new_ops = []
 
     while len(list_copy) > 0:
         current_gate = list_copy[0]
@@ -131,7 +132,7 @@ def cancel_inverses(tape):
 
         # If no such gate is found queue the operation and move on
         if next_gate_idx is None:
-            apply(current_gate)
+            new_ops.append(current_gate)
             continue
 
         # Otherwise, get the next gate
@@ -148,7 +149,7 @@ def cancel_inverses(tape):
             if len(Wires.shared_wires([current_gate.wires, next_gate.wires])) != len(
                 current_gate.wires
             ):
-                apply(current_gate)
+                new_ops.append(current_gate)
                 continue
 
             # 2. There is full overlap, but the wires are in a different order.
@@ -171,9 +172,10 @@ def cancel_inverses(tape):
         # - there is no wire symmetry
         # - the control wire symmetry does not apply because the control wires are not the same
         # - neither of the flags are_self_inverses and are_inverses are true
-        apply(current_gate)
+        new_ops.append(current_gate)
         continue
 
-    # Queue the measurements normally
-    for m in tape.measurements:
-        apply(m)
+    return Circuit(new_ops, circuit.measurements)
+
+def cancel_inverses(qfunc):
+    return TransformedQfunc(qfunc, _cancel_inverses)
