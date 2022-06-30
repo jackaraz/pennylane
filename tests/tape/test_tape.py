@@ -75,8 +75,8 @@ class TestConstruction:
         tape, ops, obs = make_tape
 
         assert len(tape.queue) == 7
-        assert tape.operations == ops
-        assert tape.observables == obs
+        assert tape.operations == tuple(ops)
+        assert tape.observables == tuple(obs)
         assert tape.output_dim == 5
         assert tape.batch_size is None
         assert tape.interface is None
@@ -118,8 +118,8 @@ class TestConstruction:
             t_obs2 = t_obs1 @ qml.PauliZ(3)
             m = qml.expval(t_obs2)
 
-        assert tape.operations == [op]
-        assert tape.observables == [t_obs2]
+        assert tape.operations == (op, )
+        assert tape.observables == (t_obs2, )
         assert tape.measurements[0].return_type is qml.measurements.Expectation
         assert tape.measurements[0].obs is t_obs2
 
@@ -134,8 +134,8 @@ class TestConstruction:
             t_obs2 = qml.Hadamard(2) @ t_obs1
             m = qml.expval(t_obs2)
 
-        assert tape.operations == [op]
-        assert tape.observables == [t_obs2]
+        assert tape.operations == (op, )
+        assert tape.observables == (t_obs2, )
         assert tape.measurements[0].return_type is qml.measurements.Expectation
         assert tape.measurements[0].obs is t_obs2
 
@@ -150,8 +150,8 @@ class TestConstruction:
             t_obs2 = qml.operation.Tensor(t_obs1, qml.Hadamard(2))
             m = qml.expval(t_obs2)
 
-        assert tape.operations == [op]
-        assert tape.observables == [t_obs2]
+        assert tape.operations == (op, )
+        assert tape.observables == (t_obs2, )
         assert tape.measurements[0].return_type is qml.measurements.Expectation
         assert tape.measurements[0].obs is t_obs2
 
@@ -167,8 +167,8 @@ class TestConstruction:
             t_obs = t_obs1 @ t_obs2
             m = qml.var(t_obs)
 
-        assert tape.operations == [op]
-        assert tape.observables == [t_obs]
+        assert tape.operations == (op, )
+        assert tape.observables == (t_obs, )
         assert tape.measurements[0].return_type is qml.measurements.Variance
         assert tape.measurements[0].obs is t_obs
 
@@ -193,8 +193,8 @@ class TestConstruction:
 
         assert len(tape.queue) == 4
         assert not tape.operations
-        assert tape.measurements == [D]
-        assert tape.observables == [C]
+        assert tape.measurements == (D, )
+        assert tape.observables == (C, )
         assert tape.output_dim == 1
         assert tape.batch_size is None
 
@@ -216,8 +216,8 @@ class TestConstruction:
             obs += [qml.probs(wires=[0, "a"])]
 
         assert len(tape.queue) == 5
-        assert tape.operations == ops
-        assert tape.observables == obs
+        assert tape.operations == tuple(ops)
+        assert tape.observables == tuple(obs)
         assert tape.output_dim == 5
         assert tape.batch_size is None
 
@@ -235,17 +235,8 @@ class TestConstruction:
             B = qml.RX(params[1], wires=0)
             qml.expval(qml.PauliZ(wires=1))
 
-        assert tape.operations == [A, B]
-        assert tape._prep == [A]
+        assert tape.operations == (A, B)
         assert tape.get_parameters() == params
-
-    def test_state_preparation_error(self):
-        """Test that an exception is raised if a state preparation comes
-        after a quantum operation"""
-        with pytest.raises(ValueError, match="must occur prior to ops"):
-            with QuantumTape() as tape:
-                B = qml.PauliX(wires=0)
-                qml.BasisState(np.array([0, 1]), wires=[0, 1])
 
     def test_measurement_before_operation(self):
         """Test that an exception is raised if a measurement occurs before a operation"""
@@ -448,14 +439,14 @@ class TestIteration:
         """Test that iterating through a tape doesn't change the underlying
         list of operations and measurements in the circuit."""
 
-        circuit = [
+        circuit = (
             qml.RX(0.432, wires=0),
             qml.Rot(0.543, 0, 0.23, wires=0),
             qml.CNOT(wires=[0, "a"]),
             qml.RX(0.133, wires=4),
             qml.expval(qml.PauliX(wires="a")),
             qml.probs(wires=[0, "a"]),
-        ]
+        )
 
         with QuantumTape() as tape:
             for op in circuit:
@@ -490,8 +481,8 @@ class TestGraph:
 
         # requesting the graph creates it
         g = tape.graph
-        assert g.operations == [op]
-        assert g.observables == [obs]
+        assert g.operations == (op, )
+        assert g.observables == (obs, )
         assert tape._graph is not None
         spy.assert_called_once()
 

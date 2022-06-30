@@ -60,8 +60,11 @@ All other gates are defined in the file stdgates.inc:
 https://github.com/Qiskit/openqasm/blob/master/examples/stdgates.inc
 """
 
+class TapeError(ValueError):
+    """An error raised with a quantum tape."""
 
-def expand_circuit(tape, depth=1, stop_at=None, expand_measurements=False):
+
+def expand_circuit(circuit, depth=1, stop_at=None, expand_measurements=False):
     """Expand all objects in a tape to a specific depth.
 
     Args:
@@ -107,66 +110,43 @@ def expand_circuit(tape, depth=1, stop_at=None, expand_measurements=False):
     RY(0.2, wires=['a'])]
     """
     if depth == 0:
-        return tape
+        return circuit
 
-    if stop_at is None:
-        # by default expand all objects
-        stop_at = lambda obj: False
+    # by default expand all objects
+    stop_at = (lambda obj: False) if stop_at is None else stop_at
 
-    queues = {"_ops": [], "_measurements": []}
+    new_ops = []
+    for op in circuit.operations:
+        if stop_at(op):
+            new_ops.append(op)
+            continue
 
-    # Check for observables acting on the same wire. If present, observables must be
-    # qubit-wise commuting Pauli words. In this case, the tape is expanded with joint
-    # rotations and the observables updated to the computational basis. Note that this
-    # expansion acts on the original tape in place.
-    if tape._obs_sharing_wires:
         try:
-            rotations, diag_obs = qml.grouping.diagonalize_qwc_pauli_words(tape._obs_sharing_wires)
-        except (TypeError, ValueError) as e:
-            raise qml.QuantumFunctionError(
-                "Only observables that are qubit-wise commuting "
-                "Pauli words can be returned on the same wire"
-            ) from e
+            expansion = op.expand()
+        except qml.operation.DecompositionUndefinedError:
+            new_ops.append(op)
+            continue
+        expanded_expansion = expand_circuit(expansion, stop_at=stop_at, depth=depth-1)
+        new_ops += expanded_expansion.circuit
 
-        queues["_ops"].extend(rotations)
+    new_measurements = list
+    if expand_measurements:
+        if len(circuit._obs_sharing_wires) > 0:
+            try:
+                rotations, diag_obs = qml.grouping.diagonalize_qwc_pauli_words(circuit._obs_sharing_wires)
+            except (TypeError, ValueError) as e:
+                raise qml.QuantumFunctionError(
+                    "Only observables that are qubit-wise commuting "
+                    "Pauli words can be returned on the same wire"
+                ) from e
 
-        for o, i in zip(diag_obs, tape._obs_sharing_wires_id):
-            new_m = qml.measurements.MeasurementProcess(tape.measurements[i].return_type, obs=o)
-            tape._measurements[i] = new_m
+            new_ops += rotations
 
-    for queue in ("_ops", "_measurements"):
-        for obj in getattr(tape, queue):
+            for observable, idx in zip(diag_obs, circuit._obs_sharing_wires_id):
+                new_measurements[idx] = qml.measurements.MeasurementProcess(circuit.measurements[i].return_type,
+                    obs = observable)
 
-            stop = stop_at(obj)
-
-            if not expand_measurements:
-                # Measurements should not be expanded; treat measurements
-                # as a stopping condition
-                stop = stop or isinstance(obj, qml.measurements.MeasurementProcess)
-
-            if stop:
-                # do not expand out the object; append it to the
-                # new tape, and continue to the next object in the queue
-                queues[queue].append(obj)
-                continue
-
-            if isinstance(obj, (qml.operation.Operator, qml.measurements.MeasurementProcess)):
-                # Object is an operation; query it for its expansion
-                try:
-                    obj = obj.expand()
-                except qml.operation.DecompositionUndefinedError:
-                    # Object does not define an expansion; treat this as
-                    # a stopping condition.
-                    queues[queue].append(obj)
-                    continue
-
-            # recursively expand out the newly created tape
-            expanded_tape = expand_circuit(obj, stop_at=stop_at, depth=depth - 1)
-
-            queues["_ops"] += expanded_tape._ops
-            queues["_measurements"] += expanded_tape._measurements
-
-    return Circuit(tuple(queues["_ops"]), tuple(queues["_measurements"]))
+    return Circuit(new_ops, new_measurements)
 
 
 def make_circuit(obj, *args, **kwargs):
@@ -323,7 +303,7 @@ class Circuit:
             if op_batch_size is None:
                 continue
             if candidate and op_batch_size != candidate:
-                raise ValueError(
+                raise TapeError(
                     "The batch sizes of the tape operations do not match, they include "
                     f"{candidate} and {op_batch_size}."
                 )
@@ -414,7 +394,12 @@ class Circuit:
         parameter_indices = []
         param_count = 0
 
-        for queue in [self._ops, self.observables]:
+        prep_ops_names = {"BasisState", "QubitStateVector", "QubitDensityMatrix"}
+
+        prep_ops = [op for op in self.operations if op.name in prep_ops_names]
+        non_prep_ops = [op for op in self.operations if op.name not in prep_ops_names]
+
+        for queue in [prep_ops, non_prep_ops, self.observables]:
             # iterate through all queues
 
             obj_params = []
@@ -441,13 +426,14 @@ class Circuit:
         self.trainable_params = [parameter_mapping[i] for i in self.trainable_params]
         self._par_info = {parameter_mapping[k]: v for k, v in self._par_info.items()}
 
-        for idx, op in enumerate(self._ops):
+        new_ops = []
+        for idx, op in enumerate(non_prep_ops):
             try:
-                self._ops[idx] = op.adjoint()
+                new_ops.append(op.adjoint())
             except qml.operation.AdjointUndefinedError:
-                op.inverse = not op.inverse
+                new_ops.append(op.inv())
 
-        self._ops = list(reversed(self._ops))
+        self._ops = tuple(prep_ops + list(reversed(new_ops)))
 
     def adjoint(self):
         new_tape = self.copy(copy_operations=True)
@@ -536,10 +522,10 @@ class Circuit:
             param_indices (list[int]): parameter indices
         """
         if any(not isinstance(i, int) or i < 0 for i in param_indices):
-            raise ValueError("Argument indices must be non-negative integers.")
+            raise TapeError("Argument indices must be non-negative integers.")
 
         if any(i > len(self._par_info) for i in param_indices):
-            raise ValueError(f"Tape has at most {self.num_params} parameters.")
+            raise TapeError(f"Tape has at most {self.num_params} parameters.")
 
         self._trainable_params = sorted(set(param_indices))
 
@@ -673,7 +659,7 @@ class Circuit:
             required_length = len(self._par_info)
 
         if len(params) != required_length:
-            raise ValueError("Number of provided parameters does not match.")
+            raise TapeError("Number of provided parameters does not match.")
 
         for idx, p in iterator:
             op = self._par_info[idx]["op"]
@@ -737,7 +723,7 @@ class Circuit:
         # first one
         ret_type = mps[0].return_type
         if ret_type == State:
-            raise ValueError(
+            raise TapeError(
                 "Getting the output shape of a tape with multiple state measurements is not supported."
             )
 
@@ -810,7 +796,7 @@ class Circuit:
                 # There is a varying number of wires that the probability
                 # measurement processes act on
                 # TODO: revisit when issues with this case are resolved
-                raise ValueError(
+                raise TapeError(
                     "Getting the output shape of a tape with multiple probability measurements "
                     "along with a device that defines a shot vector is not supported."
                 )
@@ -876,7 +862,7 @@ class Circuit:
             if num_measurements == 1:
                 output_shape = self._multi_homogenous_measurement_shape(self._measurements, device)
             else:
-                raise ValueError(
+                raise TapeError(
                     "Getting the output shape of a tape that contains multiple types of measurements is unsupported."
                 )
         return output_shape
@@ -917,7 +903,7 @@ class Circuit:
         """
         measurement_types = set(meas.return_type for meas in self._measurements)
         if len(measurement_types) > 1:
-            raise ValueError(
+            raise TapeError(
                 "Getting the numeric type of a tape that contains multiple types of measurements is unsupported."
             )
 
@@ -1075,7 +1061,7 @@ class Circuit:
             try:
                 gate = OPENQASM_GATES[op.name]
             except KeyError as e:
-                raise ValueError(f"Operation {op.name} not supported by the QASM serializer") from e
+                raise TapeError(f"Operation {op.name} not supported by the QASM serializer") from e
 
             wire_labels = ",".join([f"q[{wires.index(w)}]" for w in op.wires.tolist()])
             params = ""

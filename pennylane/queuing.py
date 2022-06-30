@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from collections import OrderedDict
+from copy import copy
 from threading import RLock
 from contextlib import contextmanager
 
@@ -153,4 +154,16 @@ def process_queue(queue: AnnotatedQueue):
 
 
 def apply(op, context=QueueManager):
-    op.__copy__().queue()
+    if op in getattr(context, "queue", QueueManager.active_queue().queue):
+        # Queuing contexts can only contain unique objects.
+        # If the object to be queued already exists, copy it.
+        op = copy(op)
+
+    if hasattr(op, "queue"):
+        # operator provides its own logic for queuing
+        op.queue(context=context)
+    else:
+        # append the operator directly to the relevant queuing context
+        context.append(op)
+
+    return op

@@ -18,11 +18,13 @@ Contains the tape transform that splits non-commuting terms
 import numpy as np
 import pennylane as qml
 
+from pennylane import Circuit
+
 from .batch_transform import batch_transform
 
 
 @batch_transform
-def split_non_commuting(tape):
+def split_non_commuting(circuit):
     r"""
     Splits a qnode measuring non-commuting observables into groups of commuting observables.
 
@@ -146,7 +148,7 @@ def split_non_commuting(tape):
     # TODO: allow for samples and probs
     obs_fn = {qml.measurements.Expectation: qml.expval, qml.measurements.Variance: qml.var}
 
-    obs_list = tape.observables
+    obs_list = circuit.observables
     return_types = [m.return_type for m in obs_list]
 
     if qml.measurements.Sample in return_types or qml.measurements.Probability in return_types:
@@ -158,16 +160,12 @@ def split_non_commuting(tape):
     groups, group_coeffs = qml.grouping.group_observables(obs_list, range(len(obs_list)))
     if len(groups) > 1:
         # make one tape per commuting group
-        tapes = []
+        circuits = []
         for group in groups:
-            with qml.tape.QuantumTape() as new_tape:
-                for op in tape.operations:
-                    qml.apply(op)
+            new_measurements = tuple(obs_fn[type](o) for type, o in zip(return_types, group))
+            new_circuit = Circuit(circuit.operations, new_measurements )
 
-                for type, o in zip(return_types, group):
-                    obs_fn[type](o)
-
-            tapes.append(new_tape)
+            circuits.append(new_circuit)
 
         def reorder_fn(res):
             """re-order the output to the original shape and order"""
@@ -180,7 +178,7 @@ def split_non_commuting(tape):
                 permutation_matrix[indx, column] = 1
             return qml.math.dot(permutation_matrix, new_res)
 
-        return tapes, reorder_fn
+        return circuits, reorder_fn
 
     # if the group is already commuting, no need to do anything
-    return [tape], lambda res: res[0]
+    return [circuit], lambda res: res[0]

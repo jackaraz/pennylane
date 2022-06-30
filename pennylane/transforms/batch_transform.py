@@ -325,7 +325,7 @@ class batch_transform:
             # dev = some_transform(dev, *transform_args)
             return self._device_wrapper(*targs, **tkwargs)(qnode)
 
-        if isinstance(qnode, qml.tape.QuantumTape):
+        if isinstance(qnode, qml.Circuit):
             # Input is a quantum tape.
             # tapes, fn = some_transform(tape, *transform_args)
             return self._tape_wrapper(*targs, **tkwargs)(qnode)

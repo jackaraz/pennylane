@@ -220,7 +220,7 @@ def group_observables(observables, coefficients=None, grouping_type="qwc", metho
     >>> coeffs_groupings
     [[0.97, 4.21], [1.43]]
     """
-
+    observables = list(observables)
     if coefficients is not None:
         if qml.math.shape(coefficients)[0] != len(observables):
             raise IndexError(
