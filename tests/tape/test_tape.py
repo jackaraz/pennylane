@@ -118,8 +118,8 @@ class TestConstruction:
             t_obs2 = t_obs1 @ qml.PauliZ(3)
             m = qml.expval(t_obs2)
 
-        assert tape.operations == (op, )
-        assert tape.observables == (t_obs2, )
+        assert tape.operations == (op,)
+        assert tape.observables == (t_obs2,)
         assert tape.measurements[0].return_type is qml.measurements.Expectation
         assert tape.measurements[0].obs is t_obs2
 
@@ -134,8 +134,8 @@ class TestConstruction:
             t_obs2 = qml.Hadamard(2) @ t_obs1
             m = qml.expval(t_obs2)
 
-        assert tape.operations == (op, )
-        assert tape.observables == (t_obs2, )
+        assert tape.operations == (op,)
+        assert tape.observables == (t_obs2,)
         assert tape.measurements[0].return_type is qml.measurements.Expectation
         assert tape.measurements[0].obs is t_obs2
 
@@ -150,8 +150,8 @@ class TestConstruction:
             t_obs2 = qml.operation.Tensor(t_obs1, qml.Hadamard(2))
             m = qml.expval(t_obs2)
 
-        assert tape.operations == (op, )
-        assert tape.observables == (t_obs2, )
+        assert tape.operations == (op,)
+        assert tape.observables == (t_obs2,)
         assert tape.measurements[0].return_type is qml.measurements.Expectation
         assert tape.measurements[0].obs is t_obs2
 
@@ -167,8 +167,8 @@ class TestConstruction:
             t_obs = t_obs1 @ t_obs2
             m = qml.var(t_obs)
 
-        assert tape.operations == (op, )
-        assert tape.observables == (t_obs, )
+        assert tape.operations == (op,)
+        assert tape.observables == (t_obs,)
         assert tape.measurements[0].return_type is qml.measurements.Variance
         assert tape.measurements[0].obs is t_obs
 
@@ -193,8 +193,8 @@ class TestConstruction:
 
         assert len(tape.queue) == 4
         assert not tape.operations
-        assert tape.measurements == (D, )
-        assert tape.observables == (C, )
+        assert tape.measurements == (D,)
+        assert tape.observables == (C,)
         assert tape.output_dim == 1
         assert tape.batch_size is None
 
@@ -481,8 +481,8 @@ class TestGraph:
 
         # requesting the graph creates it
         g = tape.graph
-        assert g.operations == (op, )
-        assert g.observables == (obs, )
+        assert g.operations == (op,)
+        assert g.observables == (obs,)
         assert tape._graph is not None
         spy.assert_called_once()
 

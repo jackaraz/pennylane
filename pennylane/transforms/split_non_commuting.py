@@ -163,7 +163,7 @@ def split_non_commuting(circuit):
         circuits = []
         for group in groups:
             new_measurements = tuple(obs_fn[type](o) for type, o in zip(return_types, group))
-            new_circuit = Circuit(circuit.operations, new_measurements )
+            new_circuit = Circuit(circuit.operations, new_measurements)
 
             circuits.append(new_circuit)
 

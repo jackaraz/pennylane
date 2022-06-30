@@ -60,6 +60,7 @@ All other gates are defined in the file stdgates.inc:
 https://github.com/Qiskit/openqasm/blob/master/examples/stdgates.inc
 """
 
+
 class TapeError(ValueError):
     """An error raised with a quantum tape."""
 
@@ -126,14 +127,16 @@ def expand_circuit(circuit, depth=1, stop_at=None, expand_measurements=False):
         except qml.operation.DecompositionUndefinedError:
             new_ops.append(op)
             continue
-        expanded_expansion = expand_circuit(expansion, stop_at=stop_at, depth=depth-1)
+        expanded_expansion = expand_circuit(expansion, stop_at=stop_at, depth=depth - 1)
         new_ops += expanded_expansion.circuit
 
     new_measurements = list
     if expand_measurements:
         if len(circuit._obs_sharing_wires) > 0:
             try:
-                rotations, diag_obs = qml.grouping.diagonalize_qwc_pauli_words(circuit._obs_sharing_wires)
+                rotations, diag_obs = qml.grouping.diagonalize_qwc_pauli_words(
+                    circuit._obs_sharing_wires
+                )
             except (TypeError, ValueError) as e:
                 raise qml.QuantumFunctionError(
                     "Only observables that are qubit-wise commuting "
@@ -143,8 +146,9 @@ def expand_circuit(circuit, depth=1, stop_at=None, expand_measurements=False):
             new_ops += rotations
 
             for observable, idx in zip(diag_obs, circuit._obs_sharing_wires_id):
-                new_measurements[idx] = qml.measurements.MeasurementProcess(circuit.measurements[i].return_type,
-                    obs = observable)
+                new_measurements[idx] = qml.measurements.MeasurementProcess(
+                    circuit.measurements[i].return_type, obs=observable
+                )
 
     return Circuit(new_ops, new_measurements)
 
