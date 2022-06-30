@@ -31,3 +31,4 @@ from .grover import GroverOperator
 from .qft import QFT
 from .kupccgsd import kUpCCGSD
 from .hilbert_schmidt import HilbertSchmidt, LocalHilbertSchmidt
+from .hamiltonian_encoding import HamiltonainEncoding
