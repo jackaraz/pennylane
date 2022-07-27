@@ -18,45 +18,70 @@ from scipy.linalg import expm
 from scipy.sparse.linalg import expm as sparse_expm
 
 
-from pennylane import numpy as np
-from pennylane.operation import expand_matrix
+from pennylane import math
+from pennylane.operation import expand_matrix, Tensor
 from pennylane.wires import Wires
 
 from .symbolicop import SymbolicOp
 
 
 class Exp(SymbolicOp):
-    """class docstring"""
+    """Represents the exponential of an operator multiplied by a coefficient.
+
+    Args:
+        base (Operator):
+        coeff (Number): A scalar coefficient of the operator
+
+    **Example:**
+
+    The rotation gates can be reproduced using the ``Exp`` operator:
+
+    >>> base = qml.PauliX(0)
+    >>> phi = 1.234
+    >>> rx = Exp(base, -0.5j * phi)
+    >>> qml.matrix(rx)
+    array([[0.8156179+0.j        , 0.       -0.57859091j],
+        [0.       -0.57859091j, 0.8156179+0.j        ]])
+    >>> qml.matrix(qml.RX(phi, 0))
+    array([[0.8156179+0.j        , 0.       -0.57859091j],
+        [0.       -0.57859091j, 0.8156179+0.j        ]])
+
+    If the coefficient is purely imaginary and the base operator is Hermitian, then
+    the gate can be used in a circuit.
+
+    """
 
     coeff = 1
     """The numerical coefficient of the operator in the exponential."""
 
-    def __init__(self, coeff=1, base=None, do_queue=True, id=None):
+    control_wires = Wires([])
+
+    def __init__(self, base=None, coeff=1, do_queue=True, id=None):
         self.coeff = coeff
         super().__init__(base, do_queue=do_queue, id=id)
-        self._name = f"Exp({coeff} {base.name}"
-        self._check_batching([coeff] + self.base.parameters)
+        if isinstance(base, Tensor):
+            self._name = f"Exp({coeff} {base})"
+        else:
+            self._name = f"Exp({coeff} {base.name})"
+
+    def __str__(self):
+        return self.name
+
+    def __repr__(self):
+        return self.name
 
     @property
     def data(self):
-        return [self.coeff] + self.base.data
+        return [self.coeff, self.base.data]
 
     @data.setter
     def data(self, new_data):
         self.coeff = new_data[0]
-        self.base.data = new_data[1:]
-
-    @property
-    def parameters(self):
-        return self.data.copy()
+        self.base.data = new_data[1]
 
     @property
     def num_params(self):
         return self.base.num_params + 1
-
-    @property
-    def ndim_params(self):
-        return (0,) + self.base.ndim_params
 
     def matrix(self, wire_order=None):
         mat = expm(self.coeff * self.base.matrix())
@@ -77,7 +102,20 @@ class Exp(SymbolicOp):
         return self.base.diagonalizing_gates()
 
     def eigvals(self):
-        return np.exp(self.base.eigvals())
+        return math.exp(self.base.eigvals())
 
-    def generator(self):
-        return self.base
+    def label(self, decimals=None, base_label=None, cache=None):
+        return base_label or "Exp"
+
+    def pow(self, z):
+        return Exp(self.base, self.coeff * z)
+
+    @property
+    def is_hermitian(self):
+        return self.base.is_hermitian and math.imag(self.coeff) == 0
+
+    @property
+    def _queue_category(self):
+        if self.base.is_hermitian and math.real(self.coeff) == 0:
+            return "_ops"
+        return None
